@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="เครื่องคิดราคางานรับปริ้นท์ 3D เทียบคิดตามน้ำหนักกับตามเวลา หักต้นทุน ค่า Fastwork ค่าส่ง และส่วนลดตามน้ำหนัก">
+<title>ราคางานปริ้นท์ 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#FFFFFF; --ink:#1A1A1A; --muted:#5B6168; --line:#E6E6E6; --line-strong:#CBCED2; --soft:#F6F7F8;
+  --w:#1F4FD1; --t:#08766A; --disc:#B4410F; --warn:#A35A00;
+  --good:#137A3A; --bad:#C0272D; --focus:#1F4FD1;
+  --font:"IBM Plex Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); font-size:16px; line-height:1.6; font-variant-numeric:tabular-nums; padding-inline:16px; padding-block:24px 48px}
+body.lock{overflow:hidden}
+:focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+button{font:inherit; color:inherit}
+.wrap{max-width:920px; margin:0 auto; display:flex; flex-direction:column; gap:20px}
+
+header{display:flex; align-items:center; justify-content:space-between; gap:12px}
+h1{font-size:clamp(22px,3.4vw,28px); font-weight:700; line-height:1.3; margin:0}
+.icon-btn{display:inline-flex; align-items:center; gap:8px; background:none; border:1px solid var(--line-strong); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:15px}
+.icon-btn:hover{border-color:var(--ink)}
+.icon-btn svg{flex:none}
+
+.panel{border:1px solid var(--line); border-radius:10px; padding:18px}
+.label{display:block; font-size:15px; font-weight:600; margin-bottom:6px}
+.muted{color:var(--muted)}
+
+/* inputs */
+.field{display:flex; align-items:center; border:1px solid var(--line-strong); border-radius:8px; background:#fff; min-width:0}
+.field:focus-within{border-color:var(--focus); box-shadow:0 0 0 1px var(--focus)}
+.field input{all:unset; flex:1; min-width:0; width:100%; font-weight:500; color:var(--ink); padding:9px 0 9px 12px; font-variant-numeric:tabular-nums}
+.field .unit{font-size:15px; color:var(--muted); padding:0 12px 0 6px; white-space:nowrap}
+.field.big input{font-size:24px; padding-block:8px}
+.field.bad{border-color:var(--bad); box-shadow:0 0 0 1px var(--bad)}
+
+/* job */
+.job{display:grid; grid-template-columns:1.3fr 1fr; gap:18px 24px}
+.pair{display:flex; gap:10px}
+.pair .field{flex:1}
+.opts{grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:10px 28px; border-top:1px solid var(--line); padding-top:14px}
+.check-row{display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none}
+.check-row input{width:20px; height:20px; margin:0; accent-color:var(--ink); cursor:pointer}
+.check-row .sub{color:var(--muted)}
+.check-row .sub.on{color:var(--disc); font-weight:600}
+.status{grid-column:1 / -1; font-size:15px; margin:0}
+.status b{font-weight:600}
+.status.ok b{color:var(--good)} .status.warn b{color:var(--warn)}
+.status button{background:none; border:none; padding:0; color:var(--focus); text-decoration:underline; cursor:pointer; font-size:15px}
+
+/* cards */
+.cards{display:grid; grid-template-columns:1fr 1fr; gap:20px}
+.card{--c:var(--w); display:flex; flex-direction:column; gap:14px}
+.card.t{--c:var(--t)}
+.card-head{display:flex; align-items:baseline; justify-content:space-between; gap:10px}
+.card-head h2{margin:0; font-size:19px; font-weight:700; color:var(--c)}
+.badge{font-size:14px; font-weight:600; color:var(--good)}
+.rate{display:flex; align-items:center; gap:8px; color:var(--muted)}
+.rate b{color:var(--ink); font-weight:600}
+.rate .field{flex:0 1 150px}
+.rate .field input{padding-block:6px}
+.price .field{border-color:var(--c)}
+.price .field input{font-size:28px; font-weight:600; color:var(--c)}
+.disc{display:flex; justify-content:space-between; gap:12px; font-size:15px; color:var(--disc); margin-top:6px}
+.disc b{white-space:nowrap}
+
+.ledger{display:flex; flex-direction:column}
+.line{display:grid; grid-template-columns:1fr minmax(0,150px); align-items:center; gap:12px; padding:7px 0; border-top:1px solid var(--line)}
+.line .name{font-size:16px}
+.line .field input{text-align:right; padding:6px 0 6px 10px}
+.line .static{text-align:right; padding-right:12px; font-weight:500}
+.line .static span{color:var(--muted); padding-left:6px; font-size:15px}
+.line.total .name{font-weight:600}
+.line.total{padding-top:10px}
+.line.total .name{font-size:18px}
+.line.total .field input{font-size:26px; font-weight:700}
+.line.mg .field input{font-weight:500}
+.line .pos{border-color:var(--good)} .line .pos input{color:var(--good)}
+.line .neg{border-color:var(--bad)} .line .neg input{color:var(--bad)}
+.line.total .pos{border-color:var(--good)} .line.total .pos input{color:var(--good)}
+.line.total .neg{border-color:var(--bad)} .line.total .neg input{color:var(--bad)}
+.err{font-size:15px; color:var(--bad); margin:0}
+.err:empty{display:none}
+
+/* both */
+.both .pair{max-width:280px}
+.both .col{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px}
+.both .cap{font-size:15px}
+.both .or{color:var(--muted); white-space:nowrap; padding-bottom:12px}
+.both .field input::placeholder{color:var(--line-strong); font-weight:400}
+.both .field input{font-size:24px; font-weight:600; color:var(--good)}
+.both .err{margin-top:6px}
+/* average */
+.avg{display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 28px}
+.avg .big{font-size:30px; font-weight:700; line-height:1.2}
+.avg .big small{font-size:16px; font-weight:500; color:var(--muted)}
+.avg .stat{display:flex; flex-direction:column}
+.avg .stat b{font-size:18px; font-weight:600}
+
+/* settings page */
+.sheet{position:fixed; inset:0; z-index:10; background:var(--bg); overflow-y:auto; padding-inline:16px; padding-top:env(safe-area-inset-top,0px); padding-bottom:calc(48px + env(safe-area-inset-bottom,0px))}
+.sheet-inner{max-width:680px; margin:0 auto; display:flex; flex-direction:column; gap:18px}
+.sheet-bar{position:sticky; top:0; background:var(--bg); display:flex; align-items:center; gap:12px; padding-block:16px 12px; border-bottom:1px solid var(--line); z-index:1}
+.sheet-bar h2{margin:0; font-size:22px; font-weight:700}
+.sheet h3{margin:0 0 12px; font-size:17px; font-weight:700}
+.set-list{display:flex; flex-direction:column; gap:10px}
+.set-row{display:grid; grid-template-columns:minmax(0,1fr) 170px; align-items:center; gap:12px}
+.tier{display:grid; grid-template-columns:auto auto minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:8px}
+.tier.off .field{opacity:.45}
+.note{font-size:15px; color:var(--muted); margin:10px 0 0}
+.formula{margin:0; padding-left:20px; color:var(--muted); font-size:15px; display:flex; flex-direction:column; gap:4px}
+.formula b{color:var(--ink); font-weight:600}
+.btn-danger{background:none; border:1px solid var(--line-strong); border-radius:8px; padding:9px 14px; cursor:pointer; color:var(--bad)}
+.btn-danger:hover{border-color:var(--bad)}
+.detail p{margin:0 0 6px}
+.detail p:last-child{margin:0}
+
+@media (max-width:720px){ .cards{grid-template-columns:1fr} }
+@media (max-width:560px){
+  body{padding-block:18px 36px}
+  .job{grid-template-columns:1fr; padding:16px}
+  .panel{padding:16px}
+  .line{grid-template-columns:1fr minmax(0,140px)}
+  .price .field input{font-size:24px}
+  .set-row{grid-template-columns:minmax(0,1fr) 130px}
+  .icon-btn .txt{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="main">
+  <header>
+    <h1>คำนวณราคางานปริ้นท์ 3D</h1>
+    <button class="icon-btn" id="openSettings" type="button" aria-label="ตั้งค่า">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="txt">ตั้งค่า</span>
+    </button>
+  </header>
+
+  <section class="panel job" aria-label="ข้อมูลงาน">
+    <div>
+      <span class="label">เวลาปริ้นท์</span>
+      <div class="pair">
+        <label class="field big"><input id="hours" inputmode="decimal" autocomplete="off" aria-label="ชั่วโมง"><span class="unit">ชม.</span></label>
+        <label class="field big"><input id="mins" inputmode="decimal" autocomplete="off" aria-label="นาที"><span class="unit">นาที</span></label>
+      </div>
+    </div>
+    <div>
+      <span class="label">Filament ที่ใช้</span>
+      <label class="field big"><input id="grams" inputmode="decimal" autocomplete="off" aria-label="กรัม"><span class="unit">กรัม</span></label>
+    </div>
+    <div class="opts">
+      <label class="check-row"><input type="checkbox" id="viaFw"><span>ผ่าน Fastwork</span><span class="sub" id="fwTxt"></span></label>
+      <label class="check-row"><input type="checkbox" id="freeShip"><span>ส่งฟรี</span><span class="sub" id="shipTxt"></span></label>
+      <label class="check-row"><input type="checkbox" id="discOn"><span>ส่วนลดตามน้ำหนัก</span><span class="sub" id="discTxt"></span></label>
+    </div>
+    <p class="status" id="status"></p>
+  </section>
+
+  <section class="panel both" aria-label="ตั้งกำไรให้ทั้ง 2 แบบ">
+    <span class="label">กำไรสุทธิที่ต้องการ (ใช้กับทั้ง 2 แบบ)</span>
+    <div class="pair">
+      <label class="field"><input id="bothProfit" inputmode="decimal" autocomplete="off" placeholder="–" aria-label="กำไรสุทธิที่ต้องการ ทั้ง 2 แบบ"><span class="unit">฿</span></label>
+    </div>
+    <p class="err" id="bothErr" role="status"></p>
+  </section>
+
+  <div class="cards" id="cards"></div>
+
+  <section class="panel avg" id="summary" aria-label="ราคาเฉลี่ย"></section>
+</div>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+  <div class="sheet-inner">
+    <div class="sheet-bar">
+      <button class="icon-btn" id="closeSettings" type="button" aria-label="กลับไปหน้าคำนวณ">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        <span>กลับ</span>
+      </button>
+      <h2 id="sheetTitle">ตั้งค่า</h2>
+    </div>
+
+    <section class="panel">
+      <h3>ต้นทุนและค่าธรรมเนียม</h3>
+      <div class="set-list">
+        <div class="set-row"><span>ต้นทุนเครื่องต่อนาที</span><label class="field"><input id="costRate" inputmode="decimal" autocomplete="off" aria-label="ต้นทุนต่อนาที"><span class="unit">฿/นาที</span></label></div>
+        <div class="set-row"><span>ค่าแพ็คต่องาน</span><label class="field"><input id="pack" inputmode="decimal" autocomplete="off" aria-label="ค่าแพ็ค"><span class="unit">฿</span></label></div>
+        <div class="set-row"><span>ค่าธรรมเนียม Fastwork</span><label class="field"><input id="feePct" inputmode="decimal" autocomplete="off" aria-label="ค่าธรรมเนียม Fastwork"><span class="unit">%</span></label></div>
+        <div class="set-row"><span>ค่าส่ง (เมื่อติ๊กส่งฟรี)</span><label class="field"><input id="shipCost" inputmode="decimal" autocomplete="off" aria-label="ค่าส่ง"><span class="unit">฿</span></label></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>ส่วนลดตามน้ำหนัก</h3>
+      <div class="set-list">
+        <label class="check-row"><input type="checkbox" id="discOn2"><span>เปิดใช้ส่วนลดตามน้ำหนัก</span></label>
+        <div class="set-list" id="tiers"></div>
+      </div>
+      <p class="note">ใช้ขั้นสูงสุดที่งานถึง แล้วลด % นั้นจากราคาทั้งงาน ติ๊กหน้าขั้นเพื่อเปิดหรือปิดขั้นนั้น</p>
+    </section>
+
+    <section class="panel">
+      <h3>เช็คต้นทุนจริง</h3>
+      <div class="set-list">
+        <div class="set-row"><span>ราคาเส้นที่ซื้อ</span><label class="field"><input id="filKg" inputmode="decimal" autocomplete="off" aria-label="ราคาเส้นต่อกิโล"><span class="unit">฿/kg</span></label></div>
+        <div class="set-row"><span>ค่าเครื่องสึก + ค่าไฟ</span><label class="field"><input id="mach" inputmode="decimal" autocomplete="off" aria-label="ค่าเครื่องและค่าไฟต่อชั่วโมง"><span class="unit">฿/ชม.</span></label></div>
+      </div>
+      <div class="note detail" id="checkDetail"></div>
+    </section>
+
+    <section class="panel">
+      <h3>สูตรที่ใช้</h3>
+      <ul class="formula">
+        <li><b>ราคาขาย</b> = (กรัม × ฿/กรัม หรือ นาที × ฿/นาที) − ส่วนลด</li>
+        <li><b>ต้นทุน</b> = นาที × ต้นทุนต่อนาที + ค่าแพ็ค</li>
+        <li><b>ค่า Fastwork</b> = ราคาขาย × %</li>
+        <li><b>กำไร</b> = ราคาขาย − ต้นทุน − ค่า Fastwork − ค่าส่ง (ถ้าส่งฟรี)</li>
+        <li><b>Margin</b> = กำไร ÷ ราคาขาย</li>
+      </ul>
+      <p class="note">แก้ราคาขาย กำไร หรือ margin ในหน้าคำนวณได้ ระบบจะหาเรทให้เอง ค่าที่ใส่จะจำไว้ในเบราว์เซอร์นี้</p>
+    </section>
+
+    <div><button class="btn-danger" id="reset" type="button">รีเซ็ตทุกค่าเป็นค่าเริ่มต้น</button></div>
+  </div>
+</div>
+
+<template id="cardTpl">
+  <article class="panel card">
+    <div class="card-head">
+      <h2 data-o="title"></h2>
+      <span class="badge" hidden>กำไรมากกว่า</span>
+    </div>
+    <div class="rate">
+      <b data-o="base"></b><span>×</span>
+      <label class="field"><input data-k="rate" inputmode="decimal" autocomplete="off"><span class="unit" data-o="rateUnit"></span></label>
+    </div>
+    <div class="price">
+      <span class="label">ราคาขาย</span>
+      <label class="field big"><input data-k="price" inputmode="decimal" autocomplete="off" aria-label="ราคาขาย"><span class="unit">฿</span></label>
+      <div class="disc" data-o="disc" hidden></div>
+    </div>
+    <div class="ledger">
+      <div class="line"><span class="name">ต้นทุน</span>
+        <label class="field"><input data-k="cost" inputmode="decimal" autocomplete="off" aria-label="ต้นทุน"><span class="unit">฿</span></label></div>
+      <div class="line" data-o="feeLine"><span class="name">ค่า Fastwork</span>
+        <label class="field"><input data-k="fee" inputmode="decimal" autocomplete="off" aria-label="ค่า Fastwork"><span class="unit">฿</span></label></div>
+      <div class="line" data-o="shipLine" hidden><span class="name">ค่าส่ง</span><span class="static" data-o="ship"></span></div>
+      <div class="line mg"><span class="name">Margin</span>
+        <label class="field" data-f><input data-k="margin" inputmode="decimal" autocomplete="off" aria-label="Profit margin"><span class="unit">%</span></label></div>
+      <div class="line total"><span class="name">กำไรสุทธิ</span>
+        <label class="field" data-f><input data-k="profit" inputmode="decimal" autocomplete="off" aria-label="กำไรสุทธิ"><span class="unit">฿</span></label></div>
+    </div>
+    <p class="err" role="status"></p>
+  </article>
+</template>
+
+<script>
+(function(){
+  const DEFAULTS = {h:2, m:30, g:45, c:0.35, f:18, rw:3, rt:1.2, pack:10, ship:60, freeShip:false, viaFw:true, discOn:true, filKg:500, mach:7.5,
+    tiers:[{g:100,p:10,on:true},{g:200,p:15,on:true},{g:300,p:20,on:true}]};
+  const KEY = 'print3d-calc-v4';
+  const clone = o => JSON.parse(JSON.stringify(o));
+  let S = clone(DEFAULTS);
+  try{
+    const saved = JSON.parse(localStorage.getItem(KEY)||'null');
+    if(saved && typeof saved==='object'){
+      for(const k in DEFAULTS){
+        if(k==='tiers'){ if(Array.isArray(saved.tiers) && saved.tiers.length===3 && saved.tiers.every(t=>Number.isFinite(t.g)&&Number.isFinite(t.p)&&typeof t.on==='boolean')) S.tiers = saved.tiers; }
+        else if(typeof DEFAULTS[k]==='boolean'){ if(typeof saved[k]==='boolean') S[k]=saved[k]; }
+        else if(Number.isFinite(saved[k])) S[k]=saved[k];
+      }
+    }
+  }catch(e){}
+  const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} };
+
+  const $ = (s, r=document) => r.querySelector(s);
+  const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+  const round = (v,d) => { const p = 10**d; return Math.round((v+Number.EPSILON)*p)/p; };
+  const nf2 = new Intl.NumberFormat('en-US',{minimumFractionDigits:2, maximumFractionDigits:2});
+  const nfR = new Intl.NumberFormat('en-US',{maximumFractionDigits:4});
+  const nfI = new Intl.NumberFormat('en-US',{maximumFractionDigits:2});
+  const money = v => Number.isFinite(v) ? nf2.format(round(v,2)) : '–';
+  const plain = v => String(round(v,4));
+  const parse = s => { const t = String(s).replace(/[,\s฿%]/g,'').replace(/[−–]/g,'-'); if(t===''||t==='-'||t==='.') return NaN; const n = Number(t); return Number.isFinite(n) ? n : NaN; };
+
+  // ---- model
+  const minutes = () => Math.max(0,S.h)*60 + Math.max(0,S.m);
+  const fee = () => S.viaFw ? S.f/100 : 0;
+  const base = k => k==='w' ? S.g : minutes();
+  const rateKey = k => k==='w' ? 'rw' : 'rt';
+  const costTotal = () => minutes()*S.c + S.pack;
+  const shipCost = () => S.freeShip ? S.ship : 0;
+  // whole-order discount: the highest enabled tier the job reaches applies to the full price
+  const liveTiers = () => S.tiers.filter(t=>t.on && t.g>0).slice().sort((a,b)=>a.g-b.g);
+  function activeTier(){
+    if(!S.discOn) return null;
+    let best = null;
+    for(const t of liveTiers()) if(S.g >= t.g) best = t;
+    return best;
+  }
+  const discPct = () => { const t = activeTier(); return t ? Math.min(Math.max(t.p,0),100)/100 : 0; };
+
+  function calc(k){
+    const list = S[rateKey(k)] * base(k), d = discPct(), D = list*d, P = list - D;
+    const C = costTotal(), F = P*fee(), sh = shipCost(), profit = P - C - F - sh;
+    return {list, D, P, C, F, sh, profit, margin: P>0 ? profit/P*100 : NaN};
+  }
+
+  // ---- inverse
+  function setPrice(k, P){
+    const b = base(k), d = discPct();
+    if(!(b>0)) return k==='w' ? 'ใส่น้ำหนัก filament ก่อน' : 'ใส่เวลาปริ้นท์ก่อน';
+    if(P < 0) return 'ราคาขายติดลบไม่ได้';
+    if(d >= 1) return 'ส่วนลด 100% คำนวณย้อนไม่ได้';
+    S[rateKey(k)] = P / (1-d) / b; return '';
+  }
+  function editCard(k, key, v){
+    const T = minutes(), C = costTotal(), f = fee(), sh = shipCost();
+    switch(key){
+      case 'rate': if(v<0) return 'เรทติดลบไม่ได้'; S[rateKey(k)] = v; return '';
+      case 'price': return setPrice(k, v);
+      case 'cost':
+        if(!(T>0)) return 'ใส่เวลาปริ้นท์ก่อน';
+        if(v < S.pack) return `ต้นทุนต้องไม่ต่ำกว่าค่าแพ็ค ${money(S.pack)} ฿`;
+        S.c = (v - S.pack) / T; return '';
+      case 'fee':
+        if(!(f>0)) return 'ค่า Fastwork เป็น 0% คำนวณย้อนไม่ได้';
+        return setPrice(k, v / f);
+      case 'profit':
+        if(f>=1) return 'ค่า Fastwork 100% ขึ้นไป ทำกำไรไม่ได้';
+        return setPrice(k, (v + C + sh) / (1 - f));
+      case 'margin': {
+        const m = v/100, den = 1 - f - m;
+        if(den <= 0) return `margin ต้องต่ำกว่า ${nfI.format((1-f)*100)}%`;
+        if(C + sh === 0) return 'ไม่มีต้นทุน margin จะคงที่';
+        return setPrice(k, (C + sh) / den);
+      }
+    }
+    return '';
+  }
+
+  // ---- build cards
+  const cardsEl = $('#cards');
+  for(const k of ['w','t']){
+    const n = $('#cardTpl').content.firstElementChild.cloneNode(true);
+    n.classList.add(k); n.dataset.m = k;
+    $('[data-o="title"]', n).textContent = k==='w' ? 'คิดตามน้ำหนัก' : 'คิดตามเวลา';
+    $('[data-o="rateUnit"]', n).textContent = k==='w' ? '฿/กรัม' : '฿/นาที';
+    $('input[data-k="rate"]', n).setAttribute('aria-label', k==='w' ? 'บาทต่อกรัม' : 'บาทต่อนาที');
+    for(const inp of $$('input[data-k]', n)) inp.id = `${k}-${inp.dataset.k}`;
+    cardsEl.appendChild(n);
+  }
+
+  // ---- build tiers
+  const tiersEl = $('#tiers');
+  S.tiers.forEach((t,i)=>{
+    const r = document.createElement('div'); r.className='tier';
+    r.innerHTML = `<input type="checkbox" id="ton${i}" data-ton="${i}" aria-label="เปิดขั้นที่ ${i+1}" style="width:20px;height:20px;margin:0;accent-color:var(--ink)"><span>ตั้งแต่</span><label class="field"><input id="tg${i}" data-tier="${i}" data-tf="g" inputmode="decimal" autocomplete="off" aria-label="ขั้นที่ ${i+1} น้ำหนัก"><span class="unit">ก.</span></label>
+      <span>ลด</span><label class="field"><input id="tp${i}" data-tier="${i}" data-tf="p" inputmode="decimal" autocomplete="off" aria-label="ขั้นที่ ${i+1} เปอร์เซ็นต์ส่วนลด"><span class="unit">%</span></label>`;
+    tiersEl.appendChild(r);
+  });
+
+  // ---- render
+  const errs = {w:'', t:''};
+  let errBoth = '';
+  const setVal = (input, text) => { if(document.activeElement !== input) input.value = text; };
+
+  function render(){
+    const T = minutes(), tier = activeTier(), d = discPct();
+    setVal($('#hours'), plain(S.h)); setVal($('#mins'), plain(S.m)); setVal($('#grams'), plain(S.g));
+    setVal($('#costRate'), nfR.format(round(S.c,4))); setVal($('#feePct'), nfI.format(S.f));
+    setVal($('#pack'), nfI.format(S.pack)); setVal($('#shipCost'), nfI.format(S.ship)); setVal($('#filKg'), nfI.format(S.filKg)); setVal($('#mach'), nfI.format(S.mach));
+    S.tiers.forEach((t,i)=>{ setVal($('#tg'+i), plain(t.g)); setVal($('#tp'+i), plain(t.p)); $('#ton'+i).checked = t.on; $('#ton'+i).closest('.tier').classList.toggle('off', !t.on || !S.discOn); });
+    $('#viaFw').checked = S.viaFw;
+    $('#fwTxt').textContent = S.viaFw ? `หัก ${nfI.format(S.f)}%` : 'ไม่หักค่าธรรมเนียม';
+    $('#freeShip').checked = S.freeShip; $('#discOn').checked = S.discOn; $('#discOn2').checked = S.discOn;
+
+    // short option text
+    $('#shipTxt').textContent = `หัก ${nfI.format(S.ship)} ฿ จากกำไร`;
+    const dt = $('#discTxt'), first = liveTiers()[0];
+    dt.classList.toggle('on', !!tier);
+    dt.textContent = !S.discOn ? '' : tier ? `ลด ${nfI.format(tier.p)}% (ถึง ${nfI.format(tier.g)} ก.)`
+      : first ? `ยังไม่ถึง ${nfI.format(first.g)} ก.` : '';
+
+    const R = {};
+    for(const k of ['w','t']){
+      const card = $(`.card[data-m="${k}"]`), r = calc(k); R[k] = r;
+      $('[data-o="base"]', card).textContent = k==='w' ? `${nfI.format(S.g)} ก.` : `${nfI.format(T)} นาที`;
+      const dl = $('[data-o="disc"]', card);
+      dl.hidden = !(d>0);
+      if(d>0) dl.innerHTML = `<span>ลด ${nfI.format(tier.p)}% เพราะงาน ${nfI.format(S.g)} ก. ถึงขั้น ${nfI.format(tier.g)} ก.</span><b>−${money(r.D)} ฿</b>`;
+      $('[data-o="shipLine"]', card).hidden = !S.freeShip;
+      $('[data-o="feeLine"]', card).hidden = !S.viaFw;
+      $('[data-o="ship"]', card).innerHTML = `${money(r.sh)}<span>฿</span>`;
+      const vals = {rate:nfR.format(round(S[rateKey(k)],4)), price:money(r.P), cost:money(r.C), fee:money(r.F), profit:money(r.profit), margin:Number.isFinite(r.margin)?nf2.format(round(r.margin,2)):'–'};
+      for(const inp of $$('input[data-k]', card)) setVal(inp, vals[inp.dataset.k]);
+      const pos = r.profit >= 0;
+      for(const f of $$('[data-f]', card)){ f.classList.toggle('pos', pos); f.classList.toggle('neg', !pos); }
+      $('.err', card).textContent = errs[k];
+    }
+
+    const synced = Math.abs(R.w.P - R.t.P) < 0.005;
+    setVal($('#bothProfit'), synced ? money(R.w.profit) : '');
+    $('#bothErr').textContent = errBoth;
+
+    const diff = R.w.profit - R.t.profit;
+    const best = Math.abs(diff) < 0.005 ? null : (diff>0 ? 'w' : 't');
+    for(const k of ['w','t']) $(`.card[data-m="${k}"] .badge`).hidden = best !== k;
+
+    // cost check: short line on main page, full detail in settings
+    const st = $('#status'), det = $('#checkDetail'), hrs = T/60, perG = S.filKg/1000*1.1;
+    if(hrs>0 && S.g>0){
+      const dens = S.g/hrs, real = S.g*perG + hrs*S.mach + S.pack, model = costTotal();
+      const breakEven = perG>0 ? Math.max(0,(S.c*60 - S.mach)/perG) : Infinity;
+      const ok = real <= model;
+      st.className = 'status ' + (ok ? 'ok' : 'warn');
+      st.innerHTML = ok
+        ? `งานนี้ ${nfI.format(round(dens,1))} ก./ชม. · <b>ต้นทุนต่อนาทีพอ</b> <button type="button" data-open>ดูรายละเอียด</button>`
+        : `งานนี้ ${nfI.format(round(dens,1))} ก./ชม. · <b>ต้นทุนจริงสูงกว่าที่ตั้ง ${money(real-model)} ฿ ควรคิดตามน้ำหนัก</b> <button type="button" data-open>ดูรายละเอียด</button>`;
+      det.innerHTML =
+        `<p>งานนี้ใช้เส้น ${nfI.format(round(dens,1))} กรัมต่อชั่วโมง</p>` +
+        `<p>ต้นทุนจริงประมาณ ${money(real)} ฿ (เส้น ${money(S.g*perG)} + เครื่องและไฟ ${money(hrs*S.mach)} + แพ็ค ${money(S.pack)}) เทียบกับที่ใช้คิด ${money(model)} ฿</p>` +
+        `<p>ถ้างานใช้เส้นเกิน ${Number.isFinite(breakEven)?nfI.format(round(breakEven,1)):'–'} ก./ชม. ต้นทุนต่อนาทีที่ตั้งไว้จะไม่พอ ควรคิดตามน้ำหนัก</p>`;
+    } else {
+      st.className = 'status'; st.textContent = '';
+      det.innerHTML = '<p>ใส่เวลาปริ้นท์และน้ำหนักในหน้าคำนวณก่อน</p>';
+    }
+
+    // average
+    const s = $('#summary');
+    if(!(R.w.P>0) && !(R.t.P>0)){ s.innerHTML = '<span class="muted">ใส่เวลาปริ้นท์และน้ำหนัก filament เพื่อเริ่มคำนวณ</span>'; return; }
+    const P = (R.w.P + R.t.P)/2, C = costTotal(), F = P*fee(), sh = shipCost(), pr = P - C - F - sh, mg = P>0 ? pr/P*100 : NaN;
+    const col = pr>=0 ? 'var(--good)' : 'var(--bad)';
+    s.innerHTML =
+      `<div class="stat"><span class="muted">ราคาเฉลี่ย 2 วิธี</span><span class="big">${money(P)} <small>฿</small></span></div>` +
+      `<div class="stat"><span class="muted">${pr>=0?'กำไรสุทธิ':'ขาดทุน'}</span><b style="color:${col}">${money(pr)} ฿</b></div>` +
+      `<div class="stat"><span class="muted">Margin</span><b style="color:${col}">${Number.isFinite(mg)?nf2.format(round(mg,2))+'%':'–'}</b></div>`;
+  }
+
+  const markBad = (input, bad) => input.closest('.field').classList.toggle('bad', !!bad);
+
+  // ---- wire simple numeric inputs
+  const topMap = {hours:'h', mins:'m', grams:'g', costRate:'c', feePct:'f', pack:'pack', shipCost:'ship', filKg:'filKg', mach:'mach'};
+  function wireSimple(el, setter){
+    el.addEventListener('input', () => {
+      const v = parse(el.value);
+      if(el.value.trim()===''){ setter(0); markBad(el,false); }
+      else if(!Number.isFinite(v) || v<0){ markBad(el,true); return; }
+      else { setter(v); markBad(el,false); }
+      errs.w = errs.t = '';
+      save(); render();
+    });
+    el.addEventListener('focus', () => el.select());
+    el.addEventListener('blur', () => { markBad(el,false); render(); });
+    el.addEventListener('keydown', e => { if(e.key==='Enter') el.blur(); });
+  }
+  for(const id in topMap) wireSimple($('#'+id), v => { S[topMap[id]] = v; });
+  for(const el of $$('input[data-tier]')){
+    const i = +el.dataset.tier, f = el.dataset.tf;
+    wireSimple(el, v => { S.tiers[i][f] = f==='p' ? Math.min(v,100) : v; });
+  }
+  $('#viaFw').addEventListener('change', e => { S.viaFw = e.target.checked; save(); render(); });
+  $('#freeShip').addEventListener('change', e => { S.freeShip = e.target.checked; save(); render(); });
+  $('#discOn').addEventListener('change', e => { S.discOn = e.target.checked; save(); render(); });
+  $('#discOn2').addEventListener('change', e => { S.discOn = e.target.checked; save(); render(); });
+  for(const el of $$('input[data-ton]')) el.addEventListener('change', e => { S.tiers[+el.dataset.ton].on = e.target.checked; save(); render(); });
+
+  // ---- wire card inputs
+  for(const card of $$('.card')){
+    const k = card.dataset.m;
+    for(const inp of $$('input[data-k]', card)){
+      inp.addEventListener('input', () => {
+        const v = parse(inp.value);
+        if(!Number.isFinite(v)){ const has = inp.value.trim()!==''; markBad(inp, has); errs[k] = has ? 'ใส่เป็นตัวเลขเท่านั้น' : ''; render(); return; }
+        let e;
+        if(inp.dataset.k === 'profit'){
+          const backup = {rw:S.rw, rt:S.rt};
+          e = editCard('w','profit',v) || editCard('t','profit',v);
+          if(e) Object.assign(S, backup);
+        } else e = editCard(k, inp.dataset.k, v);
+        errs[k] = e; errs[k==='w'?'t':'w'] = ''; errBoth = '';
+        markBad(inp, !!e);
+        if(!e) save();
+        render();
+      });
+      inp.addEventListener('focus', () => { const v = parse(inp.value); if(Number.isFinite(v)) inp.value = String(v); inp.select(); });
+      inp.addEventListener('blur', () => { markBad(inp,false); errs[k]=''; render(); });
+      inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); });
+    }
+  }
+
+  // ---- one field that sets profit for both methods
+  for(const [id,key] of [['bothProfit','profit']]){
+    const inp = $('#'+id);
+    inp.addEventListener('input', () => {
+      const v = parse(inp.value);
+      if(!Number.isFinite(v)){ const has = inp.value.trim()!==''; markBad(inp, has); errBoth = has ? 'ใส่เป็นตัวเลขเท่านั้น' : ''; render(); return; }
+      const backup = {rw:S.rw, rt:S.rt, c:S.c};
+      const e = editCard('w', key, v) || editCard('t', key, v);
+      if(e){ Object.assign(S, backup); }
+      errBoth = e; errs.w = errs.t = '';
+      markBad(inp, !!e);
+      if(!e) save();
+      render();
+    });
+    inp.addEventListener('focus', () => { const v = parse(inp.value); if(Number.isFinite(v)) inp.value = String(v); inp.select(); });
+    inp.addEventListener('blur', () => { markBad(inp,false); errBoth=''; render(); });
+    inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); });
+  }
+
+  // ---- settings page
+  const sheet = $('#sheet');
+  let lastFocus = null;
+  function openSettings(){ lastFocus = document.activeElement; sheet.hidden = false; document.body.classList.add('lock'); sheet.scrollTop = 0; $('#closeSettings').focus(); }
+  function closeSettings(){ sheet.hidden = true; document.body.classList.remove('lock'); render(); (lastFocus && lastFocus.focus) ? lastFocus.focus() : $('#openSettings').focus(); }
+  $('#openSettings').addEventListener('click', openSettings);
+  $('#closeSettings').addEventListener('click', closeSettings);
+  $('#status').addEventListener('click', e => { if(e.target.closest('[data-open]')) openSettings(); });
+  document.addEventListener('keydown', e => { if(e.key==='Escape' && !sheet.hidden) closeSettings(); });
+
+  $('#reset').addEventListener('click', () => { S = clone(DEFAULTS); errs.w = errs.t = ''; $$('.field.bad').forEach(f=>f.classList.remove('bad')); save(); render(); });
+
+  render();
+})();
+</script>
+</body>
+</html>
